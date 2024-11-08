@@ -15,13 +15,13 @@
 
 # 方案说明
 schema:
-  schema_id: double_pinyin_ziguang
-  name: 紫光双拼
+  schema_id: rime_ice_double_pinyin_abc
+  name: 智能 ABC 双拼
   version: "1"
   author:
     - Dvel
   description: |
-    雾凇拼音 - 紫光双拼
+    雾凇拼音 - 智能 ABC 双拼
     https://github.com/iDvel/rime-ice
   dependencies:
     - melt_eng        # 英文输入，作为次翻译器挂载到拼音方案
@@ -156,50 +156,51 @@ pin_cand_filter:
 
 # 主翻译器，拼音
 translator:
-  dictionary: rime_ice          # 挂载词库 rime_ice.dict.yaml
-  enable_word_completion: true  # 大于 4 音节的词条自动补全，librime > 1.11.2
-  prism: double_pinyin_ziguang  # 多方案共用一个词库时，为避免冲突，需要用 prism 指定一个名字。
-  spelling_hints: 8             # corrector.lua ：为了让错音错字提示的 Lua 同时适配全拼双拼，将拼音显示在 comment 中
-  always_show_comments: true    # corrector.lua ：Rime 默认在 preedit 等于 comment 时取消显示 comment，这里强制一直显示，供 corrector.lua 做判断用。
-  initial_quality: 1.2          # 拼音的权重应该比英文大
-  comment_format:               # 标记拼音注释，供 corrector.lua 做判断用
+  dictionary: rime_ice              # 挂载词库 rime_ice.dict.yaml
+  enable_word_completion: true      # 大于 4 音节的词条自动补全，librime > 1.11.2
+  prism: rime_ice_double_pinyin_abc # 多方案共用一个词库时，为避免冲突，需要用 prism 指定一个名字。
+  spelling_hints: 8                 # corrector.lua ：为了让错音错字提示的 Lua 同时适配全拼双拼，将拼音显示在 comment 中
+  always_show_comments: true        # corrector.lua ：Rime 默认在 preedit 等于 comment 时取消显示 comment，这里强制一直显示，供 corrector.lua 做判断用。
+  initial_quality: 1.2              # 拼音的权重应该比英文大
+  comment_format:                   # 标记拼音注释，供 corrector.lua 做判断用
     - xform/^/［/
     - xform/$/］/
   preedit_format:               # preedit_format 影响到输入框的显示和“Shift+回车”上屏的字符
-    - xform/o(\w)/0$1/              # 零聲母先改爲0，以方便後面的轉換
-    - xform/([jqxy])n/$1ue/         # 提前轉換雙拼碼 n 和 g，因爲轉換後的拼音裏就快要出現這兩個字母了，那時將難以分辨出雙拼碼
-    - xform/([nl])n/$1ve/
-    - xform/([dtgkhzcsuai])n/$1ui/
-    - xform/([nljqxb])g/$1iang/
-    - xform/([gkhuai])g/$1uang/
-    - xform/(\w)w/$1en/
-    - xform/(\w)r/$1an/
-    - xform/(\w)t/$1eng/
-    - xform/([jqxylmnbp])y/$1in/
-    - xform/([zcsuaigkh])y/$1uai/
-    - xform/([dtnlgkhrzcsuai])o/$1uo/
-    - xform/(\w)q/$1ao/
-    - xform/(\w)p/$1ai/
-    - xform/(\w)s/$1ang/
-    - xform/(\w)d/$1ie/
-    - xform/(\w)f/$1ian/
-    - xform/([jqx])h/$1iong/
-    - xform/([dtnlgkhrzcsuai])h/$1ong/
-    - xform/0j/0er/
-    - xform/([dnlmjqx])j/$1iu/
-    - xform/(\w)k/$1ei/
-    - xform/(\w)l/$1uan/
-    - xform/(\w)z/$1ou/
-    - xform/([jqxl])x/$1ia/
-    - xform/([gkhuai])x/$1ua/
-    - xform/(\w);/$1ing/
-    - xform/(\w)b/$1iao/
-    - xform/(\w)m/$1un/
-    - "xform/(^|[ '])u/$1zh/"  # 復原聲母，音節開始處的雙拼字母a改寫爲zh；其他位置的才真正是a
-    - "xform/(^|[ '])a/$1ch/"
-    - "xform/(^|[ '])i/$1sh/"
-    - xform/0(\w)/$1/          # 好了，現在可以把零聲母拿掉啦
-    - xform/([nljqxy])v/$1ü/   # 這樣纔是漢語拼音 :-)
+    - xform/o(\w)/0$1/
+    - xform/(\w)q/$1ei/
+    - xform/(\w)n/$1un/
+    - xform/(\w)g/$1eng/
+    - xform/(\w)w/$1ian/
+    - xform/([dtnljqx])r/$1iu/
+    - xform/0r/0er/
+    - xform/([nljqxb])t/$1iang/
+    - xform/(\w)t/$1uang/
+    - xform/(\w)y/$1ing/
+    - xform/([dtnlgkhaevrzcs])o/$1uo/
+    - xform/(\w)p/$1uan/
+    - xform/([jqx])s/$1iong/
+    - xform/(\w)s/$1ong/
+    - xform/([gkhaevrzcs])d/$1ua/
+    - xform/(\w)d/$1ia/
+    - xform/(\w)f/$1en/
+    - xform/(\w)h/$1ang/
+    - xform/(\w)j/$1an/
+    - xform/(\w)k/$1ao/
+    - xform/(\w)l/$1ai/
+    - xform/(\w)z/$1iao/
+    - xform/(\w)x/$1ie/
+    - xform/([gkhaev])c/$1uai/
+    - xform/(\w)c/$1in/
+    - xform/(\w)b/$1ou/
+    - xform/([nl])m/$1ve/
+    - xform/([jqxy])m/$1ue/
+    - xform/(\w)m/$1ui/
+    - "xform/(^|[ '])a/$1zh/"
+    - "xform/(^|[ '])e/$1ch/"
+    - "xform/(^|[ '])v/$1sh/"
+    - xform/0(\w)/$1/
+    - xform/([nl])v/$1ü/
+    - xform/([jqxy])v/$1u/
     - xform/ü/v/  # ü 显示为 v
 
 
@@ -216,7 +217,7 @@ melt_eng:
 # 中英混合词汇
 cn_en:
   dictionary: ""
-  user_dict: en_dicts/cn_en_ziguang
+  user_dict: en_dicts/cn_en_abc
   db_class: stabledb
   enable_completion: true
   enable_sentence: false
@@ -290,7 +291,7 @@ recognizer:
   import_preset: default  # 从 default.yaml 继承通用的
   patterns:  # 再增加方案专有的：
     punct: "^V([0-9]|10|[A-Za-z]+)$"    # 响应 symbols_caps_v.yaml 的 symbols
-    radical_lookup: "^uU[a-z;]+$"       # 响应部件拆字的反查，与 radical_lookup/prefix 匹配
+    radical_lookup: "^uU[a-z]+$"        # 响应部件拆字的反查，与 radical_lookup/prefix 匹配
     unicode: "^U[a-f0-9]+"              # 脚本将自动获取第 2 个字符 U 作为触发前缀，响应 lua_translator@unicode，输出 Unicode 字符
     number: "^R[0-9]+[.]?[0-9]*"        # 脚本将自动获取第 2 个字符 R 作为触发前缀，响应 lua_translator@number_translator，数字金额大写
     gregorian_to_lunar: "^N[0-9]{1,8}"  # 脚本将自动获取第 2 个字符 N 作为触发前缀，响应 lua_translator@lunar，公历转农历，输入 N20240115 得到「二〇二三年腊月初五」
@@ -306,37 +307,36 @@ key_binder:
 # 拼写设定
 speller:
   # 如果不想让什么标点直接上屏，可以加在 alphabet，或者编辑标点符号为两个及以上的映射
-  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA;`
-  # initials 定义仅作为始码的按键，排除 ` ; 让单个的 ` ; 可以直接上屏
+  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA`
+  # initials 定义仅作为始码的按键，排除 ` 让单个的 ` 可以直接上屏
   initials: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
   delimiter: " '"  # 第一位<空格>是拼音之间的分隔符；第二位<'>表示可以手动输入单引号来分割拼音。
   algebra:
     - erase/^xx$/
-    - derive/^([jqxy])u$/$1v/
-    - xform/^([aoe].*)$/Ⓞ$1/  # 添上固定的零聲母o，先標記爲大寫O
-    - xform/en$/Ⓦ/
-    - xform/eng$/Ⓣ/
-    - xform/in$|uai$/Ⓨ/
-    - xform/^zh/Ⓤ/
-    - xform/^sh/Ⓘ/
+    - xform/^zh/Ⓐ/
+    - xform/^ch/Ⓔ/
+    - xform/^sh/Ⓥ/
+    - xform/^([aoe].*)$/Ⓞ$1/
+    - xform/ei$/Ⓠ/
+    - xform/ian$/Ⓦ/
+    - xform/er$|iu$/Ⓡ/
+    - xform/[iu]ang$/Ⓣ/
+    - xform/ing$/Ⓨ/
     - xform/uo$/Ⓞ/
-    - xform/ai$/Ⓟ/
-    - xform/^ch/Ⓐ/
-    - xform/[iu]ang$/Ⓖ/
-    - xform/ang$/Ⓢ/  # ang should be placed after iang/uang
-    - xform/ie$/Ⓓ/
-    - xform/ian$/Ⓕ/
-    - xform/(.)i?ong$/$1Ⓗ/
-    - xform/er$|iu$/Ⓙ/
-    - xform/ei$/Ⓚ/
-    - xform/uan$/Ⓛ/
-    - xform/ing$/;/
-    - xform/ou$/Ⓩ/
-    - xform/[iu]a$/Ⓧ/
-    - xform/iao$/Ⓑ/
-    - xform/ue$|ui$|ve$/Ⓝ/
-    - xform/un$/Ⓜ/
-    - xform/ao$/Ⓠ/ # ao should be placed after iao
-    - xform/an$/Ⓡ/ # an should be placed after uan/ian
-    - xlit/ⓌⓉⓎⓊⒾⓄⓅⒶⒼⓈⒹⒻⒽⒿⓀⓁⓏⓍⒷⓃⓂⓆⓇ/wtyuiopagsdfhjklzxbnmqr/
+    - xform/uan$/Ⓟ/
+    - xform/(.)i?ong$/$1Ⓢ/
+    - xform/[iu]a$/Ⓓ/
+    - xform/en$/Ⓕ/
+    - xform/eng$/Ⓖ/
+    - xform/ang$/Ⓗ/
+    - xform/an$/Ⓙ/
+    - xform/iao$/Ⓩ/
+    - xform/ao$/Ⓚ/
+    - xform/in$|uai$/Ⓒ/
+    - xform/ai$/Ⓛ/
+    - xform/ie$/Ⓧ/
+    - xform/ou$/Ⓑ/
+    - xform/un$/Ⓝ/
+    - xform/[uv]e$|ui$/Ⓜ/
+    - xlit/ⓆⓌⒺⓇⓉⓎⓄⓅⒶⓈⒹⒻⒼⒽⒿⓀⓁⓏⓍⒸⓋⒷⓃⓂ/qwertyopasdfghjklzxcvbnm/
     # - abbrev/^(.).+$/$1/  # 首字母简拼，开启后会导致 3 个字母时 kj'x 变成 k'jx 的问题
