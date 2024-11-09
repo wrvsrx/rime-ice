@@ -7,11 +7,9 @@ stdenvNoCC.mkDerivation {
       ps: with ps; [
         shake
         yaml
+        utf8-string
       ]
     ))
     haskellPackages.haskell-language-server
   ];
-  installPhase = ''
-    mkdir -p $out
-  '';
 }

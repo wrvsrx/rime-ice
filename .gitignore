@@ -23,3 +23,5 @@ rime_deployer
 rime_patch
 
 /.direnv
+/.shake
+/result
