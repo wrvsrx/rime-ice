@@ -22,7 +22,224 @@ import Development.Shake.Util
 import Text.Printf (printf)
 import Text.RawString.QQ (r)
 
+buildDir = "build"
+
 type Component = Tr.Tree (String, Action ())
+
+renderComponentClosure :: Component -> Rules ()
+renderComponentClosure (Tr.Node (name, act) children) = do
+  phony (name <> "-closure") $ do
+    need (map ((<> "-closure") . fst . Tr.rootLabel) children)
+    act
+  mapM_ renderComponentClosure children
+
+renderComponent :: Component -> Rules ()
+renderComponent (Tr.Node (name, act) children) = do
+  phony name act
+  mapM_ renderComponent children
+
+renderComponentToNix :: Component -> Rules ()
+renderComponentToNix (Tr.Node (name, act) children) = do
+  phony (name <> "-nix") $
+    do
+      let
+        nixCnt :: String =
+          printf
+            [r|
+{
+  stdenvNoCC,
+  haskellPackages,
+  rimeDataBuildHook,
+  librime,
+  # we need default.yaml provided by rime-prelude
+  rime-prelude,
+  source,
+  %s
+}:
+let
+  src_ =
+    stdenvNoCC.mkDerivation {
+      inherit (source) src version;
+      pname = "rime-ice-%s";
+      propagatedBuildInputs = [ rime-prelude %s ];
+      nativeBuildInputs = [
+        (haskellPackages.ghcWithPackages (
+          ps: with ps; [
+            shake
+            yaml
+            utf8-string
+            raw-strings-qq
+          ]
+        ))
+      ];
+      env.LC_CTYPE = "C.UTF-8";
+      postPatch = ''
+        cp ${../Shakefile.hs} Shakefile.hs
+      '';
+      buildPhase = ''
+        shake %s
+      '';
+      installPhase = ''
+        mkdir -p $out/share/rime-data
+        mkdir -p build
+        cp -r build/. $out/share/rime-data/
+      '';
+    };
+in
+  stdenvNoCC.mkDerivation {
+    inherit (src_)
+      pname
+      version
+      propagatedBuildInputs;
+    src = "${src_}/share/rime-data";
+    nativeBuildInputs = [
+      rimeDataBuildHook
+      librime
+    ];
+    installPhase = ''
+      rm -rf rime_data_deps/
+      mkdir -p $out/share/rime-data/
+      cp -r . $out/share/rime-data/
+    '';
+  }
+|]
+            (intercalate ", " (map (("rime-ice-" <>) . fst . Tr.rootLabel) children))
+            name
+            (unwords (map (("rime-ice-" <>) . fst . Tr.rootLabel) children))
+            name
+       in
+        writeFileChanged (buildDir </> "nix" </> "rime-ice-" <> name </> "default.nix") nixCnt
+  mapM_ renderComponentToNix children
+
+copyFolderAction dir pattern = do
+  dictList <- getDirectoryFiles "" [dir </> pattern]
+  mapM_ (\x -> copyFileChanged x (buildDir </> x)) dictList
+
+cnDicts' = Tr.Node ("cn_dicts", copyFolderAction "cn_dicts" "*.dict.yaml") []
+enDicts' = Tr.Node ("en_dicts", copyFolderAction "en_dicts" "*.dict.yaml") []
+
+-- 有几种可能：
+--
+-- - 直接复制文件且相对路径不变
+-- - 直接复制文件且相对路径改变
+-- - 经过变换生成文件
+-- - 直接写入文件
+--
+-- 我们不存在通过外部软件处理文件的情况
+
+data RimeTransformation
+  = RimeTransformationIdentity FilePath
+  | RimeTransformationRename FilePath FilePath
+  | RimeTransformationApply FilePath ((FilePath, String) -> (FilePath, String))
+  | RimeTransformationProduce FilePath String
+
+type RimeCompoment = Tr.Tree (String, [RimeTransformation])
+
+cnDicts :: RimeCompoment
+cnDicts =
+  Tr.Node
+    ( "cn_dicts"
+    ,
+      [ RimeTransformationIdentity "cn_dicts/41448.dict.yaml"
+      , RimeTransformationIdentity "cn_dicts/8105.dict.yaml"
+      , RimeTransformationIdentity "cn_dicts/base.dict.yaml"
+      , RimeTransformationIdentity "cn_dicts/ext.dict.yaml"
+      , RimeTransformationIdentity "cn_dicts/others.dict.yaml"
+      , RimeTransformationIdentity "cn_dicts/tencent.dict.yaml"
+      ]
+    )
+    []
+
+enDicts :: RimeCompoment
+enDicts =
+  Tr.Node
+    ( "en_dicts"
+    ,
+      [ RimeTransformationIdentity "en_dicts/en.dict.yaml"
+      , RimeTransformationIdentity "en_dicts/en_ext.dict.yaml"
+      ]
+    )
+    []
+
+opencc :: RimeCompoment
+opencc =
+  Tr.Node
+    ( "opencc"
+    ,
+      [ RimeTransformationIdentity "opencc/emoji.json"
+      , RimeTransformationIdentity "opencc/emoji.txt"
+      , RimeTransformationIdentity "opencc/others.txt"
+      ]
+    )
+    []
+
+luas :: RimeCompoment
+luas =
+  Tr.Node
+    ( "lua"
+    ,
+      [ RimeTransformationIdentity "lua/autocap_filter.lua"
+      , RimeTransformationIdentity "lua/calc_translator.lua"
+      , RimeTransformationIdentity "lua/cn_en_spacer.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/drop_words.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/filter.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/hide_words.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/logger.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/metatable.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/processor.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/reduce_freq_words.lua"
+      , RimeTransformationIdentity "lua/cold_word_drop/string.lua"
+      , RimeTransformationIdentity "lua/corrector.lua"
+      , RimeTransformationIdentity "lua/date_translator.lua"
+      , RimeTransformationIdentity "lua/debuger.lua"
+      , RimeTransformationIdentity "lua/en_spacer.lua"
+      , RimeTransformationIdentity "lua/force_gc.lua"
+      , RimeTransformationIdentity "lua/is_in_user_dict.lua"
+      , RimeTransformationIdentity "lua/long_word_filter.lua"
+      , RimeTransformationIdentity "lua/lunar.lua"
+      , RimeTransformationIdentity "lua/number_translator.lua"
+      , RimeTransformationIdentity "lua/pin_cand_filter.lua"
+      , RimeTransformationIdentity "lua/reduce_english_filter.lua"
+      , RimeTransformationIdentity "lua/search.lua"
+      , RimeTransformationIdentity "lua/select_character.lua"
+      , RimeTransformationIdentity "lua/t9_preedit.lua"
+      , RimeTransformationIdentity "lua/unicode.lua"
+      , RimeTransformationIdentity "lua/v_filter.lua"
+      ]
+    )
+    []
+
+meltEngSchema :: RimeCompoment
+meltEngSchema =
+  Tr.Node
+    ( "melt_eng"
+    ,
+      [ RimeTransformationIdentity "melt_eng.dict.yaml"
+      , RimeTransformationIdentity "melt_eng.schema.yaml"
+      ]
+    )
+    []
+
+radicalPinyinSchema :: RimeCompoment
+radicalPinyinSchema =
+  Tr.Node
+    ( "radical_pinyin"
+    ,
+      [ RimeTransformationIdentity "radical_pinyin.dict.yaml"
+      , RimeTransformationIdentity "radical_pinyin.schema.yaml"
+      ]
+    )
+    []
+
+rimeIceDict :: RimeCompoment
+rimeIceDict =
+  Tr.Node
+    ( "pinyin-dict"
+    ,
+      [ RimeTransformationIdentity "rime_ice.dict.yaml"
+      ]
+    )
+    [cnDicts]
 
 main :: IO ()
 main = shakeArgs shakeOptions $ do
@@ -51,20 +268,6 @@ self:
               allName
         )
  where
-  buildDir = "build"
-  renderComponentClosure :: Component -> Rules ()
-  renderComponentClosure (Tr.Node (name, act) children) = do
-    phony (name <> "-closure") $ do
-      need (map ((<> "-closure") . fst . Tr.rootLabel) children)
-      act
-    mapM_ renderComponentClosure children
-  renderComponent :: Component -> Rules ()
-  renderComponent (Tr.Node (name, act) children) = do
-    phony name act
-    mapM_ renderComponent children
-
-  cnDicts' = Tr.Node ("cn_dicts", copyFolderAction "cn_dicts" "*.dict.yaml") []
-  enDicts' = Tr.Node ("en_dicts", copyFolderAction "en_dicts" "*.dict.yaml") []
   lua' =
     Tr.Node
       ( "lua"
@@ -197,78 +400,3 @@ __patch:
         , radicalPinyinSchema'
         ]
   all' = Tr.Node ("all", pure ()) [doubleFly']
-  copyFolderAction dir pattern = do
-    dictList <- getDirectoryFiles "" [dir </> pattern]
-    mapM_ (\x -> copyFileChanged x (buildDir </> x)) dictList
-  renderComponentToNix :: Component -> Rules ()
-  renderComponentToNix (Tr.Node (name, act) children) = do
-    phony (name <> "-nix") $
-      do
-        let
-          nixCnt :: String =
-            printf
-              [r|
-{
-  stdenvNoCC,
-  haskellPackages,
-  rimeDataBuildHook,
-  librime,
-  # we need default.yaml provided by rime-prelude
-  rime-prelude,
-  source,
-  %s
-}:
-let
-  src_ =
-    stdenvNoCC.mkDerivation {
-      inherit (source) src version;
-      pname = "rime-ice-%s";
-      propagatedBuildInputs = [ rime-prelude %s ];
-      nativeBuildInputs = [
-        (haskellPackages.ghcWithPackages (
-          ps: with ps; [
-            shake
-            yaml
-            utf8-string
-            raw-strings-qq
-          ]
-        ))
-      ];
-      env.LC_CTYPE = "C.UTF-8";
-      postPatch = ''
-        cp ${../Shakefile.hs} Shakefile.hs
-      '';
-      buildPhase = ''
-        shake %s
-      '';
-      installPhase = ''
-        mkdir -p $out/share/rime-data
-        mkdir -p build
-        cp -r build/. $out/share/rime-data/
-      '';
-    };
-in
-  stdenvNoCC.mkDerivation {
-    inherit (src_)
-      pname
-      version
-      propagatedBuildInputs;
-    src = "${src_}/share/rime-data";
-    nativeBuildInputs = [
-      rimeDataBuildHook
-      librime
-    ];
-    installPhase = ''
-      rm -rf rime_data_deps/
-      mkdir -p $out/share/rime-data/
-      cp -r . $out/share/rime-data/
-    '';
-  }
-|]
-              (intercalate ", " (map (("rime-ice-" <>) . fst . Tr.rootLabel) children))
-              name
-              (unwords (map (("rime-ice-" <>) . fst . Tr.rootLabel) children))
-              name
-         in
-          writeFileChanged (buildDir </> "nix" </> "rime-ice-" <> name </> "default.nix") nixCnt
-    mapM_ renderComponentToNix children
